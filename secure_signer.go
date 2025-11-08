@@ -1,71 +1,16 @@
 package main
 
 import (
-	"context"        // Best practice for request-scoped data, like timeouts
-	"crypto/ed25519" // For Solana-style keys
-	"crypto/rand"    // For cryptographically secure randomness
-	"encoding/hex"   // To create a clean string ID from the public key bytes
+	"context"         // Best practice for request-scoped data, like timeouts
+	"crypto/ed25519"  // For Solana-style keys
+	"crypto/rand"     // For cryptographically secure randomness
+	"encoding/base64" // For base64 encoding/decoding
+	"encoding/hex"    // To create a clean string ID from the public key bytes
 	"errors"
+	"fmt"
 	"log"
-	"sync"
+	"time"
 )
-
-type SecureKeyStore struct {
-	// public to private key map
-	keys map[string]ed25519.PrivateKey
-
-	// mutex to prevent concurrent access
-	mu sync.RWMutex
-}
-
-// constructor
-func NewSecureKeyStore() *SecureKeyStore {
-	return &SecureKeyStore{
-		keys: make(map[string]ed25519.PrivateKey),
-	}
-}
-
-func (s *SecureKeyStore) Store(id string, key ed25519.PrivateKey) {
-	s.mu.Lock()
-
-	defer s.mu.Unlock()
-
-	s.keys[id] = pk
-}
-
-func (s *SecureKeyStore) Get(id string) (ed25519.PrivateKey, error) {
-	s.mu.RLock()
-
-	defer s.mu.RUnlock()
-
-	pk, ok := s.keys[id]
-	if !ok {
-		return nil, errors.New("key not found")
-	}
-	return pk, nil
-}
-
-// Clears private key from mem, and removes from store
-func (s *SecureKeyStore) Zerorize(id string) error {
-	s.mu.Lock()
-
-	defer s.mu.Unlock()
-
-	pk, ok := s.keys[id]
-	if !ok {
-		return errors.New("Key not found")
-	}
-
-	// loop over each byte and zerorize it
-	for i := range pk {
-		pk[i] = 0
-	}
-
-	delete(s.key, id)
-
-	log.Printf("Key ID %s zeroized and removed from memory store.", id)
-	return nil
-}
 
 type Account struct {
 	PublicKey string `json:"publickey"`
@@ -78,7 +23,7 @@ type TransactionRequest struct {
 
 type TransactionResult struct {
 	KeyID           string `json:"keyId"`
-	Signature       string `json:"signature`
+	Signature       string `json:"signature"`
 	BroadcastStatus string `json:"broadcaststatus"`
 	Error           string `json:"error,omitempty"`
 }
@@ -107,7 +52,7 @@ func (s *signerService) GenerateKey(ctx context.Context) (Account, error) {
 	}
 
 	// encode key
-	keyId := hex.Encode(pubKey)
+	keyId := hex.EncodeToString(pubKey)
 
 	s.store.Store(keyId, privKey)
 
@@ -123,7 +68,7 @@ func (s *signerService) SignTransaction(ctx context.Context, req TransactionRequ
 		if r := recover(); r != nil {
 			log.Printf("Critical Panic for during signing for %s, %v", req.KeyID, r)
 			result.Error = "Internal Signing Error, Try again later"
-			err = error.New("Signing failed due to internal error")
+			err = errors.New("Signing failed due to internal error")
 		}
 	}()
 
@@ -145,13 +90,10 @@ func (s *signerService) SignTransaction(ctx context.Context, req TransactionRequ
 		return result, fmt.Errorf("key retrieval failed w/ error: %w", keyErr)
 	}
 
-	sig, sigErr := ed25519.Sign(privKey, rawTxData)
-	if sigErr != nil {
-		return result, fmt.Errorf("cryptographic signing failed: %w", signErr)
-	}
+	sig := ed25519.Sign(privKey, rawTxData)
 
 	//zerorize key
-	err := s.store.Zerorize(req.keyId)
+	err = s.store.Zerorize(req.KeyID)
 	if err != nil {
 		return result, fmt.Errorf("error clearing key from mem: %w", err)
 	}
@@ -160,5 +102,14 @@ func (s *signerService) SignTransaction(ctx context.Context, req TransactionRequ
 	result.BroadcastStatus = "Signed and Ready"
 
 	return result, nil
+}
 
+func (s *signerService) SimulateBroadCast(ctx context.Context, sig string) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "Failed", fmt.Errorf("Broadcast timeout err: %w", ctx.Err())
+	default:
+		time.Sleep(50 * time.Millisecond)
+		return fmt.Sprintf("Broadcasted TX %s", sig[:8]), nil
+	}
 }
