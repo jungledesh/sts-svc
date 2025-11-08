@@ -98,6 +98,6 @@ func (s *APIServer) handleTxSign(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(res)
 
 	case <-ctx.Done():
-		http.Error(w, fmt.Sprintf(`{"error": "Tx signing request timedout"}`, http.StatusGatewayTimeout), http.StatusGatewayTimeout)
+		http.Error(w, fmt.Sprintf(`{"error": "Tx signing request timedout %d"}`, http.StatusGatewayTimeout), http.StatusGatewayTimeout)
 	}
 }

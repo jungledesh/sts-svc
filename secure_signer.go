@@ -62,7 +62,7 @@ func (s *signerService) GenerateKey(ctx context.Context) (Account, error) {
 }
 
 func (s *signerService) SignTransaction(ctx context.Context, req TransactionRequest) (result TransactionResult, err error) {
-	log.Printf("Attempting to sign transaction for Account: ", req.KeyID)
+	log.Printf("Attempting to sign transaction for Account: %v", req.KeyID)
 
 	defer func() {
 		if r := recover(); r != nil {
