@@ -1,0 +1,28 @@
+# Binaries and build output
+/sts-svc
+*.exe
+*.out
+*.test
+
+# IDE/editor folders
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependency and build cache
+/vendor/
+bin/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+
+# Logs and temp files
+*.log
+*.tmp
