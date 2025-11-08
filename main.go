@@ -1,7 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"log"
+)
 
 func main() {
-	fmt.Println("Init code")
+
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+	store := NewSecureKeyStore()
+	signer := NewSignerService(store)
+	server := NewAPIServer(signer)
+
+	server.Run()
 }
